@@ -10,6 +10,11 @@ import numpy as np
 import modules.scripts as scripts
 import gradio as gr
 
+import launch
+
+if not launch.is_installed("diffusers"):
+    launch.run_pip(f"install diffusers", "diffusers")
+
 from modules import images, paths, sd_samplers, processing, sd_models, sd_vae
 from modules.processing import process_images, Processed, StableDiffusionProcessingTxt2Img
 from modules.shared import opts, cmd_opts, state
