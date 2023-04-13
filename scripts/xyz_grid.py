@@ -65,13 +65,17 @@ def mosaic(img:Image):
     img = img.resize(s,Image.NEAREST)
     return img
 
+def blackout(img:Image):
+    s = img.size
+    # Create a new black image with the same size as the input image
+    black_img = Image.new('RGB', s, (0, 0, 0))
+    return black_img
 
 def apply_field(field):
     def fun(p, x, xs):
         setattr(p, field, x)
 
     return fun
-
 
 def apply_prompt(p, x, xs):
     if xs[0] not in p.prompt and xs[0] not in p.negative_prompt:
@@ -690,7 +694,7 @@ class Script(scripts.Script):
         print("NSFW results:",has_nsfw_concepts)
         for index,nsfw in enumerate(has_nsfw_concepts):
             if nsfw:
-                processed.images[index] = mosaic(processed.images[index])
+                processed.images[index] = blackout(processed.images[index])
 
         z_count = len(zs)
 
