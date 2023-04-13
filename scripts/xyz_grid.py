@@ -23,9 +23,42 @@ import re
 
 from modules.ui_components import ToolButton
 
+import torch
+from diffusers.pipelines.stable_diffusion.safety_checker import StableDiffusionSafetyChecker
+from transformers import AutoFeatureExtractor
+from PIL import Image
+import numpy as np
+from modules import scripts, shared
+import gradio as gr
+
+safety_model_id = "CompVis/stable-diffusion-safety-checker"
+safety_feature_extractor = None
+safety_checker = None
+
 fill_values_symbol = "\U0001f4d2"  # 📒
 
 AxisInfo = namedtuple('AxisInfo', ['axis', 'values'])
+
+def pil_to_numpy(images):
+    n_images = [np.array(image,dtype=float) for image in images]
+    return n_images
+# check and replace nsfw content
+def check_safety(x_image):
+    global safety_feature_extractor, safety_checker
+
+    if safety_feature_extractor is None:
+        safety_feature_extractor = AutoFeatureExtractor.from_pretrained(safety_model_id)
+        safety_checker = StableDiffusionSafetyChecker.from_pretrained(safety_model_id)
+
+    safety_checker_input = safety_feature_extractor(x_image, return_tensors="pt")
+    _, has_nsfw_concepts = safety_checker(images=pil_to_numpy(x_image), clip_input=safety_checker_input.pixel_values)
+    return has_nsfw_concepts
+
+def mosaic(img:Image):
+    s = img.size
+    img.thumbnail((17,17))
+    img = img.resize(s,Image.NEAREST)
+    return img
 
 
 def apply_field(field):
@@ -647,6 +680,12 @@ class Script(scripts.Script):
         if not processed.images:
             # It broke, no further handling needed.
             return processed
+        
+        has_nsfw_concepts = check_safety(processed.images)
+        print("NSFW results:",has_nsfw_concepts)
+        for index,nsfw in enumerate(has_nsfw_concepts):
+            if nsfw:
+                processed.images[index] = mosaic(processed.images[index])
 
         z_count = len(zs)
 
